@@ -118,10 +118,13 @@ export function runWorker(creep: Creep) {
         case WORKER_STATE_START_PROCESS_ENERGY:
             console.log(creep.name, 'STATE: START PROCESS ENERGY');
 
-            const possibleConstructionSites = creep.room.find(FIND_MY_CONSTRUCTION_SITES);
+            const possibleStructuresToTransfer = creep.room.find(FIND_MY_STRUCTURES, {
+                filter: structure => (structure.structureType === STRUCTURE_EXTENSION || structure.structureType === STRUCTURE_SPAWN) &&
+                structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+            });
 
-            if (possibleConstructionSites.length > 0) {
-                setState(creep, WORKER_STATE_BUILD, { constructionSiteId: possibleConstructionSites[0].id });
+            if (possibleStructuresToTransfer.length > 0) {
+                setState(creep, WORKER_STATE_TRANSFER, { structureId: possibleStructuresToTransfer[0].id });
                 runWorker(creep);
                 break;
             }
@@ -136,13 +139,10 @@ export function runWorker(creep: Creep) {
                 break;
             }
 
-            const possibleStructuresToTransfer = creep.room.find(FIND_MY_STRUCTURES, {
-                filter: structure => (structure.structureType === STRUCTURE_EXTENSION || structure.structureType === STRUCTURE_SPAWN) &&
-                structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0
-            });
+            const possibleConstructionSites = creep.room.find(FIND_MY_CONSTRUCTION_SITES);
 
-            if (possibleStructuresToTransfer.length > 0) {
-                setState(creep, WORKER_STATE_TRANSFER, { structureId: possibleStructuresToTransfer[0].id });
+            if (possibleConstructionSites.length > 0) {
+                setState(creep, WORKER_STATE_BUILD, { constructionSiteId: possibleConstructionSites[0].id });
             }
             else {
                 setState(creep, WORKER_STATE_TRANSFER, { structureId: creep.room.controller!.id });
