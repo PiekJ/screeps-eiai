@@ -16,6 +16,8 @@ export function isWorkerNeeded() {
 }
 
 export function spawnWorker(spawn: StructureSpawn) {
+  console.log('SHOULD SPAWN');
+
   const extensions = spawn.room.find(FIND_MY_STRUCTURES, {
     filter: structure => structure.structureType === STRUCTURE_EXTENSION
   }) as StructureExtension[];

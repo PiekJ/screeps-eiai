@@ -7,6 +7,10 @@ interface CreepMemory {
   data?: any;
 }
 
+interface RoomMemory {
+  currentPlanRcl: number;
+}
+
 interface Memory {
   uuid: number;
   log: any;

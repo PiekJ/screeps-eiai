@@ -1,21 +1,15 @@
+import { planRoom } from "room-structure-planner";
 import { isWorkerNeeded, spawnWorker, spawnWorkerOrg } from "spawner";
 import { ErrorMapper } from "utils/ErrorMapper";
 import { runWorker } from "worker/worker";
 
-/*
-Room RCL:
-1: Spawn as many 1w,2m,1c workers. Fill Spanwer. Construct roads to link all sources with Spawn and Controller
-2: Construct 5x extensions. Spawn worker with xw,xw,1c.
-3:
-4:
-5: Construct links, to get rid move cost when harvesting energy.
-*/
+const mobSpawner = Game.spawns['MobSpawner'];
 
 export const loop = ErrorMapper.wrapLoop(() => {
   console.log(`Current game tick is ${Game.time}`);
 
   if (isWorkerNeeded()) {
-    spawnWorker(Game.spawns['MobSpawner']);
+    spawnWorker(mobSpawner);
   }
 
   for (const creepName in Game.creeps) {
@@ -26,6 +20,8 @@ export const loop = ErrorMapper.wrapLoop(() => {
       }
     }
   }
+
+  planRoom(mobSpawner.room, mobSpawner);
 
   for (const creepName in Memory.creeps) {
     if (!(creepName in Game.creeps)) {
