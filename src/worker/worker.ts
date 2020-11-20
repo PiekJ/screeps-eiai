@@ -1,3 +1,4 @@
+import { appendLog } from "utils/Logger";
 import { WORKER_STATE_UNKNOWN, setState, WORKER_STATE_HARVEST, WORKER_STATE_START_HARVEST, WORKER_STATE_START_PROCESS_ENERGY, getStateMemory, WORKER_STATE_TRANSFER, WORKER_STATE_BUILD, WORKER_STATE_REPAIR } from "./worker-state";
 
 export function runWorker(creep: Creep) {
@@ -7,7 +8,7 @@ export function runWorker(creep: Creep) {
 
     switch (creep.memory.state) {
         case WORKER_STATE_UNKNOWN:
-            console.log(creep.name, 'STATE: UNKNOWN');
+            appendLog(creep, 'STATE: UNKNOWN');
 
             if (creep.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
                 setState(creep, WORKER_STATE_START_HARVEST);
@@ -16,16 +17,16 @@ export function runWorker(creep: Creep) {
             break;
 
         case WORKER_STATE_START_HARVEST:
-            console.log(creep.name, 'STATE: START HARVEST');
+            appendLog(creep, 'STATE: START HARVEST');
 
             const sources = creep.room.find(FIND_SOURCES_ACTIVE);
 
-            setState(creep, WORKER_STATE_HARVEST, { sourceId:  sources[0].id });
+            setState(creep, WORKER_STATE_HARVEST, { sourceId: sources[0].id });
             runWorker(creep);
             break;
 
         case WORKER_STATE_HARVEST:
-            console.log(creep.name, 'STATE: HARVEST');
+            appendLog(creep, 'STATE: HARVEST');
 
             if (creep.store.getFreeCapacity(RESOURCE_ENERGY) <= 0) {
                 setState(creep, WORKER_STATE_START_PROCESS_ENERGY);
@@ -38,12 +39,12 @@ export function runWorker(creep: Creep) {
             const source = Game.getObjectById(harvestStateMemory.sourceId)!;
 
             if (creep.harvest(source) === ERR_NOT_IN_RANGE) {
-                creep.moveTo(source, {visualizePathStyle: {stroke: '#ffaa00'}});
+                creep.moveTo(source, { visualizePathStyle: { stroke: '#ffaa00' } });
             }
             break;
 
         case WORKER_STATE_TRANSFER:
-            console.log(creep.name, 'STATE: TRANSFER');
+            appendLog(creep, 'STATE: TRANSFER');
 
             if (creep.store.getUsedCapacity(RESOURCE_ENERGY) <= 0) {
                 setState(creep, WORKER_STATE_START_HARVEST);
@@ -57,7 +58,7 @@ export function runWorker(creep: Creep) {
 
             switch (creep.transfer(transferToStructure, RESOURCE_ENERGY)) {
                 case ERR_NOT_IN_RANGE:
-                    creep.moveTo(transferToStructure, {visualizePathStyle: {stroke: '#ffaa00'}});
+                    creep.moveTo(transferToStructure, { visualizePathStyle: { stroke: '#ffaa00' } });
                     break;
 
                 case ERR_FULL:
@@ -68,7 +69,7 @@ export function runWorker(creep: Creep) {
             break;
 
         case WORKER_STATE_BUILD:
-            console.log(creep.name, 'STATE: BUILD');
+            appendLog(creep, 'STATE: BUILD');
 
             if (creep.store.getUsedCapacity(RESOURCE_ENERGY) <= 0) {
                 setState(creep, WORKER_STATE_START_HARVEST);
@@ -82,7 +83,7 @@ export function runWorker(creep: Creep) {
 
             if (constructionSiteToBuild) {
                 if (creep.build(constructionSiteToBuild!) === ERR_NOT_IN_RANGE) {
-                    creep.moveTo(constructionSiteToBuild!, {visualizePathStyle: {stroke: '#ffaa00'}});
+                    creep.moveTo(constructionSiteToBuild!, { visualizePathStyle: { stroke: '#ffaa00' } });
                 }
             }
             else {
@@ -92,7 +93,7 @@ export function runWorker(creep: Creep) {
             break;
 
         case WORKER_STATE_REPAIR:
-            console.log(creep.name, 'STATE: REPAIR');
+            appendLog(creep, 'STATE: REPAIR');
 
             if (creep.store.getUsedCapacity(RESOURCE_ENERGY) <= 0) {
                 setState(creep, WORKER_STATE_START_HARVEST);
@@ -111,12 +112,12 @@ export function runWorker(creep: Creep) {
             }
 
             if (creep.repair(structureToRepair) === ERR_NOT_IN_RANGE) {
-                creep.moveTo(structureToRepair, {visualizePathStyle: {stroke: '#ffaa00'}});
+                creep.moveTo(structureToRepair, { visualizePathStyle: { stroke: '#ffaa00' } });
             }
             break;
 
         case WORKER_STATE_START_PROCESS_ENERGY:
-            console.log(creep.name, 'STATE: START PROCESS ENERGY');
+            appendLog(creep, 'STATE: START PROCESS ENERGY');
 
             if (creep.room.controller!.ticksToDowngrade < 500) {
                 setState(creep, WORKER_STATE_TRANSFER, { structureId: creep.room.controller!.id });
@@ -126,7 +127,7 @@ export function runWorker(creep: Creep) {
 
             const possibleStructuresToTransfer = creep.room.find(FIND_MY_STRUCTURES, {
                 filter: structure => (structure.structureType === STRUCTURE_EXTENSION || structure.structureType === STRUCTURE_SPAWN) &&
-                structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+                    structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0
             });
 
             if (possibleStructuresToTransfer.length > 0) {

@@ -10,15 +10,18 @@ Room RCL:
 export function planRoom(room: Room, mainSpawn: StructureSpawn) {
     const roomController = room.controller!;
 
-    constructRoadsBetweenKeyPoints(room, mainSpawn);
+    // place construction sites depending on RCL level.
+
+    // constructRoadsBetweenKeyPoints(room, mainSpawn);
 }
 
-function constructRoadsBetweenKeyPoints(room: Room, mainSpawn: StructureSpawn) { // fix placing construction site ON the sources and controller
-    // [...room.find(FIND_SOURCES_ACTIVE), room.controller!]
-    //     .map(source => room.findPath(mainSpawn.pos, source.pos, {
-    //         ignoreCreeps: true,
-    //         swampCost: 100
-    //     }))
-    //     .reduce((acc, x) => acc.concat(x), []) // Screeps is running on NodeJS 10, which does not support flatMap.
-    //     .forEach(pathStep => room.createConstructionSite(pathStep.x, pathStep.y, STRUCTURE_ROAD));
+function constructRoadsBetweenKeyPoints(room: Room, mainSpawn: StructureSpawn) {
+    [...room.find(FIND_SOURCES_ACTIVE), room.controller!]
+        .map(source => room.findPath(mainSpawn.pos, source.pos, {
+            ignoreCreeps: true,
+            swampCost: 100
+        }))
+        .reduce((acc, x) => acc.concat(x), []) // Screeps is running on NodeJS 10, which does not support flatMap.
+        .filter(x => room.lookAt(x.x, x.y).length === 0)
+        .forEach(pathStep => room.createConstructionSite(pathStep.x, pathStep.y, STRUCTURE_ROAD));
 }

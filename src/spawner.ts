@@ -1,8 +1,9 @@
+import { appendLog } from "utils/Logger";
 import { WORKER_STATE_UNKNOWN } from "worker/worker-state";
 
 export function spawnWorkerOrg(spawn: StructureSpawn) {
   var screepName = `worker-${Game.time}`;
-  spawn.spawnCreep([WORK, CARRY, MOVE, MOVE], screepName, {memory: {role: 'worker', state: WORKER_STATE_UNKNOWN}});
+  spawn.spawnCreep([WORK, CARRY, MOVE, MOVE], screepName, { memory: { role: 'worker', state: WORKER_STATE_UNKNOWN } });
 }
 
 const bodyPartBuildCosts = {
@@ -16,7 +17,13 @@ export function isWorkerNeeded() {
 }
 
 export function spawnWorker(spawn: StructureSpawn) {
-  console.log('SHOULD SPAWN');
+  appendLog(spawn, 'Should spawn a creep.');
+
+  if (spawn.spawning) {
+    appendLog(spawn, 'Already spawning a creep.');
+
+    return;
+  }
 
   const extensions = spawn.room.find(FIND_MY_STRUCTURES, {
     filter: structure => structure.structureType === STRUCTURE_EXTENSION
@@ -24,19 +31,23 @@ export function spawnWorker(spawn: StructureSpawn) {
 
   const extensionTotalCapacity = extensions.length > 0
     ? extensions
-        .map(extension => extension.store.getCapacity(RESOURCE_ENERGY))
-        .reduce((totalCapacity, capacity) => totalCapacity + capacity)
+      .map(extension => extension.store.getCapacity(RESOURCE_ENERGY))
+      .reduce((totalCapacity, capacity) => totalCapacity + capacity)
     : 0;
 
   const extensionUsedCapacity = extensions.length > 0
     ? extensions
-        .map(extension => extension.store.getUsedCapacity(RESOURCE_ENERGY))
-        .reduce((usedCapacity, capacity) => usedCapacity + capacity)
+      .map(extension => extension.store.getUsedCapacity(RESOURCE_ENERGY))
+      .reduce((usedCapacity, capacity) => usedCapacity + capacity)
     : 0;
 
   const totalCapacity = spawn.store.getCapacity(RESOURCE_ENERGY) + extensionTotalCapacity;
 
-  if (spawn.store.getUsedCapacity(RESOURCE_ENERGY) + extensionUsedCapacity < totalCapacity) {
+  const totalUsedCapacity = spawn.store.getUsedCapacity(RESOURCE_ENERGY) + extensionUsedCapacity;
+
+  if (totalUsedCapacity < totalCapacity) {
+    appendLog(spawn, `Not enough energy available ${totalUsedCapacity}/${totalCapacity}.`);
+
     return;
   }
 
@@ -54,21 +65,12 @@ export function spawnWorker(spawn: StructureSpawn) {
   const workBodyPartCosts = bodyPartBuildCosts[MOVE] + bodyPartBuildCosts[WORK];
   const amountOfWorkBodyParts = Math.floor(totalCapacityLeftForBodyParts / workBodyPartCosts); // more worker parts!!
 
-  totalCapacityLeftForBodyParts -=  amountOfWorkBodyParts * workBodyPartCosts;
+  totalCapacityLeftForBodyParts -= amountOfWorkBodyParts * workBodyPartCosts;
 
   const amountOfMoveBodyParts = amountOfCarryBodyParts + amountOfWorkBodyParts;
 
-  if (totalCapacityLeftForBodyParts < 0)
-  {
-    console.log(
-      'ERROR: Not enough energy left to spawn creep!',
-      amountOfCarryBodyParts,
-      amountOfWorkBodyParts,
-      amountOfMoveBodyParts,
-      totalCapacityLeftForBodyParts,
-      totalCapacity);
-
-    return;
+  if (totalCapacityLeftForBodyParts < 0) {
+    throw `ERROR: Not enough energy left to spawn creep! ${amountOfCarryBodyParts} ${amountOfWorkBodyParts} ${amountOfMoveBodyParts} ${totalCapacityLeftForBodyParts} ${totalCapacity}`;
   }
 
   const workerBodyParts = [
@@ -78,5 +80,5 @@ export function spawnWorker(spawn: StructureSpawn) {
     ...new Array(amountOfCarryBodyParts).fill(CARRY)];
 
   var screepName = `worker-${Game.time}`;
-  spawn.spawnCreep(workerBodyParts, screepName, {memory: {role: 'worker', state: WORKER_STATE_UNKNOWN}});
+  spawn.spawnCreep(workerBodyParts, screepName, { memory: { role: 'worker', state: WORKER_STATE_UNKNOWN } });
 }
