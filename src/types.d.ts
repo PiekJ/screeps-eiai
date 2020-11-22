@@ -3,12 +3,13 @@
 // memory extension samples
 interface CreepMemory {
   role: string;
-  state: number;
-  data?: any;
+  state: number; // worker state machine, pre room task
+  data?: any; // worker state machine, pre room task
 }
 
 interface RoomMemory {
   currentPlanRcl: number;
+  creepRoomTaskTracker: { [key: string]: CreepAssignedRoomTask[] };
 }
 
 interface Memory {

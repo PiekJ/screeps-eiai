@@ -1,9 +1,9 @@
+import { WORKER_STATE_UNKNOWN } from "creeps/worker/worker";
 import { appendLog } from "utils/Logger";
-import { WORKER_STATE_UNKNOWN } from "worker/worker-state";
 
-export function spawnWorkerOrg(spawn: StructureSpawn) {
+export function spawnWorkerOrg(spawn: StructureSpawn): void {
   var screepName = `worker-${Game.time}`;
-  spawn.spawnCreep([WORK, CARRY, MOVE, MOVE], screepName, { memory: { role: 'worker', state: WORKER_STATE_UNKNOWN } });
+  spawn.spawnCreep([WORK, CARRY, MOVE, MOVE], screepName, { memory: { role: "worker", state: WORKER_STATE_UNKNOWN } });
 }
 
 const bodyPartBuildCosts = {
@@ -12,15 +12,15 @@ const bodyPartBuildCosts = {
   [CARRY]: 50
 };
 
-export function isWorkerNeeded() {
-  return _.filter(Game.creeps, creep => creep.memory.role === 'worker').length < 6;
+export function isWorkerNeeded(): boolean {
+  return _.filter(Game.creeps, creep => creep.memory.role === "worker").length < 6;
 }
 
-export function spawnWorker(spawn: StructureSpawn) {
-  appendLog(spawn, 'Should spawn a creep.');
+export function spawnWorker(spawn: StructureSpawn): void {
+  appendLog(spawn, "Do spawn");
 
   if (spawn.spawning) {
-    appendLog(spawn, 'Already spawning a creep.');
+    appendLog(spawn, "Already spawning");
 
     return;
   }
@@ -29,33 +29,35 @@ export function spawnWorker(spawn: StructureSpawn) {
     filter: structure => structure.structureType === STRUCTURE_EXTENSION
   }) as StructureExtension[];
 
-  const extensionTotalCapacity = extensions.length > 0
-    ? extensions
-      .map(extension => extension.store.getCapacity(RESOURCE_ENERGY))
-      .reduce((totalCapacity, capacity) => totalCapacity + capacity)
-    : 0;
+  const extensionTotalCapacity =
+    extensions.length > 0
+      ? extensions
+          .map(extension => extension.store.getCapacity(RESOURCE_ENERGY))
+          .reduce((totalCapacity, capacity) => totalCapacity + capacity)
+      : 0;
 
-  const extensionUsedCapacity = extensions.length > 0
-    ? extensions
-      .map(extension => extension.store.getUsedCapacity(RESOURCE_ENERGY))
-      .reduce((usedCapacity, capacity) => usedCapacity + capacity)
-    : 0;
+  const extensionUsedCapacity =
+    extensions.length > 0
+      ? extensions
+          .map(extension => extension.store.getUsedCapacity(RESOURCE_ENERGY))
+          .reduce((usedCapacity, capacity) => usedCapacity + capacity)
+      : 0;
 
   const totalCapacity = spawn.store.getCapacity(RESOURCE_ENERGY) + extensionTotalCapacity;
 
   const totalUsedCapacity = spawn.store.getUsedCapacity(RESOURCE_ENERGY) + extensionUsedCapacity;
 
   if (totalUsedCapacity < totalCapacity) {
-    appendLog(spawn, `Not enough energy available ${totalUsedCapacity}/${totalCapacity}.`);
+    appendLog(spawn, `Not enough energy available (${totalUsedCapacity}/${totalCapacity})`);
 
     return;
   }
 
   const baseWorkerBodyParts = [MOVE, MOVE, WORK, CARRY];
 
-  let totalCapacityLeftForBodyParts = totalCapacity - baseWorkerBodyParts
-    .map(bodyPart => bodyPartBuildCosts[bodyPart])
-    .reduce((totalCost, cost) => totalCost + cost);
+  let totalCapacityLeftForBodyParts =
+    totalCapacity -
+    baseWorkerBodyParts.map(bodyPart => bodyPartBuildCosts[bodyPart]).reduce((totalCost, cost) => totalCost + cost);
 
   const carryBodyPartCosts = bodyPartBuildCosts[MOVE] + bodyPartBuildCosts[CARRY];
   const amountOfCarryBodyParts = Math.min(0, Math.floor(totalCapacityLeftForBodyParts / carryBodyPartCosts)); // worker has enough with 50 capacity.
@@ -77,8 +79,9 @@ export function spawnWorker(spawn: StructureSpawn) {
     ...baseWorkerBodyParts,
     ...new Array(amountOfMoveBodyParts).fill(MOVE),
     ...new Array(amountOfWorkBodyParts).fill(WORK),
-    ...new Array(amountOfCarryBodyParts).fill(CARRY)];
+    ...new Array(amountOfCarryBodyParts).fill(CARRY)
+  ];
 
   var screepName = `worker-${Game.time}`;
-  spawn.spawnCreep(workerBodyParts, screepName, { memory: { role: 'worker', state: WORKER_STATE_UNKNOWN } });
+  spawn.spawnCreep(workerBodyParts, screepName, { memory: { role: "worker", state: WORKER_STATE_UNKNOWN } });
 }
