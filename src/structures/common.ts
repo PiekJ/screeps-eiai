@@ -6,11 +6,20 @@ export function isStructureNeedingEnergy(structure: AnyStructure): boolean {
 }
 
 export function isStructureNeedingRepair(structure: AnyStructure): boolean {
-  return structure.structureType === STRUCTURE_ROAD && structure.hits / structure.hitsMax < 0.5;
+  return (
+    (structure.structureType === STRUCTURE_ROAD && structure.hits / structure.hitsMax < 0.5) ||
+    (structure.structureType === STRUCTURE_RAMPART && structure.hits < 1000)
+  );
 }
 
 export function calculateRepairCost(structure: AnyStructure): number {
-  return Math.ceil((structure.hitsMax - structure.hits) / 100);
+  let hitsToRepair = structure.hitsMax - structure.hits;
+
+  if (structure.structureType === STRUCTURE_RAMPART) {
+    hitsToRepair = Math.min(50000, hitsToRepair);
+  }
+
+  return Math.ceil(hitsToRepair / 100);
 }
 
 export function calculateBuildCost(constructionSite: ConstructionSite): number {

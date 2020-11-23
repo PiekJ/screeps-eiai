@@ -1,10 +1,6 @@
+import { SIGNER_STATE_UNKNOWN } from "creeps/signer/signer";
 import { WORKER_STATE_UNKNOWN } from "creeps/worker/worker";
 import { appendLog } from "utils/Logger";
-
-export function spawnWorkerOrg(spawn: StructureSpawn): void {
-  var screepName = `worker-${Game.time}`;
-  spawn.spawnCreep([WORK, CARRY, MOVE, MOVE], screepName, { memory: { role: "worker", state: WORKER_STATE_UNKNOWN } });
-}
 
 const bodyPartBuildCosts = {
   [MOVE]: 50,

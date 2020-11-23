@@ -48,112 +48,43 @@ export class RoomTaskScheduler {
   }
 
   public runScheduler(): void {
-    const existingAssignedRoomTaskMap = new Map<
-      string,
-      { totalEnergyInProgress: number; initialEnergyNeeded: number }
-    >();
-
-    for (const roomTaskId in this.room.memory.creepRoomTaskTracker) {
-      const creepsAssignedRoomTask = this.room.memory.creepRoomTaskTracker[roomTaskId].filter(
-        x => Game.getObjectById(x.creepId) !== null
-      );
-      this.room.memory.creepRoomTaskTracker[roomTaskId] = creepsAssignedRoomTask;
-
-      if (creepsAssignedRoomTask.length === 0) {
-        delete this.room.memory.creepRoomTaskTracker[roomTaskId];
-
-        continue;
-      }
-
-      let initialEnergyNeeded = 0;
-      let totalEnergyInProgress = 0;
-
-      for (const existingRoomTaskInfo of creepsAssignedRoomTask) {
-        if (existingRoomTaskInfo.initialEnergyNeeded > initialEnergyNeeded) {
-          initialEnergyNeeded = existingRoomTaskInfo.initialEnergyNeeded;
-        }
-
-        totalEnergyInProgress += existingRoomTaskInfo.usedEnergyCapacity;
-      }
-
-      existingAssignedRoomTaskMap.set(roomTaskId, { totalEnergyInProgress, initialEnergyNeeded });
-    }
+    const existingAssignedRoomTaskMap = this.fetchExistingAssignedRoomTasks();
 
     const structuresInRoom = this.room.find(FIND_STRUCTURES);
 
     for (const structure of structuresInRoom) {
       if (isStructureNeedingEnergy(structure)) {
-        const roomTask = toRoomTask(ROOM_TASK_TRANSFER, structure, calculateTransferCost(structure));
-
-        // function!
-        if (existingAssignedRoomTaskMap.has(roomTask.id)) {
-          const existingRoomTaskInfo = existingAssignedRoomTaskMap.get(roomTask.id)!;
-
-          roomTask.energyNeeded -=
-            existingRoomTaskInfo.totalEnergyInProgress -
-            (existingRoomTaskInfo.initialEnergyNeeded - roomTask.energyNeeded);
-        }
-
-        if (roomTask.energyNeeded > 0) {
-          this.priorityQueue.push(roomTask);
-        }
+        this.tryPushRoomTask(
+          existingAssignedRoomTaskMap,
+          toRoomTask(ROOM_TASK_TRANSFER, structure, calculateTransferCost(structure))
+        );
       }
 
       if (isStructureNeedingRepair(structure)) {
-        const roomTask = toRoomTask(ROOM_TASK_REPAIR, structure, calculateRepairCost(structure));
-
-        if (existingAssignedRoomTaskMap.has(roomTask.id)) {
-          const existingRoomTaskInfo = existingAssignedRoomTaskMap.get(roomTask.id)!;
-
-          roomTask.energyNeeded -=
-            existingRoomTaskInfo.totalEnergyInProgress -
-            (existingRoomTaskInfo.initialEnergyNeeded - roomTask.energyNeeded);
-        }
-
-        if (roomTask.energyNeeded > 0) {
-          this.priorityQueue.push(roomTask);
-        }
+        this.tryPushRoomTask(
+          existingAssignedRoomTaskMap,
+          toRoomTask(ROOM_TASK_REPAIR, structure, calculateRepairCost(structure))
+        );
       }
     }
 
     const constructionSitesInRoom = this.room.find(FIND_MY_CONSTRUCTION_SITES);
 
     for (const constructionSite of constructionSitesInRoom) {
-      const roomTask = toRoomTask(ROOM_TASK_BUILD, constructionSite, calculateBuildCost(constructionSite));
-
-      if (existingAssignedRoomTaskMap.has(roomTask.id)) {
-        const existingRoomTaskInfo = existingAssignedRoomTaskMap.get(roomTask.id)!;
-
-        roomTask.energyNeeded -=
-          existingRoomTaskInfo.totalEnergyInProgress -
-          (existingRoomTaskInfo.initialEnergyNeeded - roomTask.energyNeeded);
-      }
-
-      if (roomTask.energyNeeded > 0) {
-        this.priorityQueue.push(roomTask);
-      }
+      this.tryPushRoomTask(
+        existingAssignedRoomTaskMap,
+        toRoomTask(ROOM_TASK_BUILD, constructionSite, calculateBuildCost(constructionSite))
+      );
     }
 
     if (this.room.controller!.ticksToDowngrade <= 500) {
-      const roomTask = toRoomTask(ROOM_TASK_CONTROLLER, this.room.controller!, 50);
-
-      if (existingAssignedRoomTaskMap.has(roomTask.id)) {
-        const existingRoomTaskInfo = existingAssignedRoomTaskMap.get(roomTask.id)!;
-
-        roomTask.energyNeeded -=
-          existingRoomTaskInfo.totalEnergyInProgress -
-          (existingRoomTaskInfo.initialEnergyNeeded - roomTask.energyNeeded);
-      }
-
-      if (roomTask.energyNeeded > 0) {
-        this.priorityQueue.push(roomTask);
-      }
+      this.tryPushRoomTask(existingAssignedRoomTaskMap, toRoomTask(ROOM_TASK_CONTROLLER, this.room.controller!, 50));
     }
 
     this.priorityQueue.sort(roomTaskOrderCallback);
   }
 
-  public assignTaskToCreep(creep: Creep): RoomTask {
+  public retrieveRoomTask(creep: Creep): RoomTask {
     const roomTask = this.priorityQueue.shift();
 
     if (roomTask) {
@@ -178,7 +109,7 @@ export class RoomTaskScheduler {
     };
   }
 
-  public markCreepTaskComplete(creep: Creep, roomTaskId: string, forceComplete?: boolean): void {
+  public markRoomTaskComplete(creep: Creep, roomTaskId: string, forceComplete?: boolean): void {
     const creepsAssignedRoomTask = this.room.memory.creepRoomTaskTracker[roomTaskId];
     if (!creepsAssignedRoomTask) {
       return;
@@ -240,5 +171,54 @@ export class RoomTaskScheduler {
     }
 
     this.room.memory.creepRoomTaskTracker[roomTask.id] = [creepAssignedTask];
+  }
+
+  private tryPushRoomTask(
+    existingAssignedRoomTaskMap: Map<string, ExistingAssignedRoomTask>,
+    roomTask: RoomTask
+  ): void {
+    if (existingAssignedRoomTaskMap.has(roomTask.id)) {
+      const existingRoomTaskInfo = existingAssignedRoomTaskMap.get(roomTask.id)!;
+
+      roomTask.energyNeeded -=
+        existingRoomTaskInfo.totalEnergyInProgress - (existingRoomTaskInfo.initialEnergyNeeded - roomTask.energyNeeded);
+    }
+
+    if (roomTask.energyNeeded > 0) {
+      this.priorityQueue.push(roomTask);
+    }
+  }
+
+  private fetchExistingAssignedRoomTasks(): Map<string, ExistingAssignedRoomTask> {
+    const existingAssignedRoomTaskMap = new Map<string, ExistingAssignedRoomTask>();
+
+    for (const roomTaskId in this.room.memory.creepRoomTaskTracker) {
+      const creepsAssignedRoomTask = this.room.memory.creepRoomTaskTracker[roomTaskId].filter(
+        x => Game.getObjectById(x.creepId) !== null
+      );
+      this.room.memory.creepRoomTaskTracker[roomTaskId] = creepsAssignedRoomTask;
+
+      if (creepsAssignedRoomTask.length === 0) {
+        // delete existing task, creep seems to dead.
+        delete this.room.memory.creepRoomTaskTracker[roomTaskId];
+
+        continue;
+      }
+
+      let initialEnergyNeeded = 0;
+      let totalEnergyInProgress = 0;
+
+      for (const existingRoomTaskInfo of creepsAssignedRoomTask) {
+        if (existingRoomTaskInfo.initialEnergyNeeded > initialEnergyNeeded) {
+          initialEnergyNeeded = existingRoomTaskInfo.initialEnergyNeeded;
+        }
+
+        totalEnergyInProgress += existingRoomTaskInfo.usedEnergyCapacity;
+      }
+
+      existingAssignedRoomTaskMap.set(roomTaskId, { totalEnergyInProgress, initialEnergyNeeded });
+    }
+
+    return existingAssignedRoomTaskMap;
   }
 }

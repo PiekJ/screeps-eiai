@@ -17,7 +17,7 @@ type WorkerStateConstant =
   | WORKER_STATE_REPAIR
   | WORKER_STATE_COMPLETE_TASK;
 
-interface StateMemoryTypes {
+interface WorkerStateMemoryTypes {
   [key: number]:
     | HarvestStateMemory
     | TransferStateMemory

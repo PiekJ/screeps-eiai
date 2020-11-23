@@ -17,11 +17,11 @@ export const WORKER_STATE_BUILD: WORKER_STATE_BUILD = 5;
 export const WORKER_STATE_REPAIR: WORKER_STATE_REPAIR = 6;
 export const WORKER_STATE_COMPLETE_TASK: WORKER_STATE_COMPLETE_TASK = 7;
 
-function getStateMemory<K extends WorkerStateConstant>(creep: Creep, state: K): StateMemoryTypes[K] {
+function getStateMemory<K extends WorkerStateConstant>(creep: Creep, state: K): WorkerStateMemoryTypes[K] {
   return creep.memory.data;
 }
 
-function setState<K extends WorkerStateConstant>(creep: Creep, state: K, data?: StateMemoryTypes[K]) {
+function setState<K extends WorkerStateConstant>(creep: Creep, state: K, data?: WorkerStateMemoryTypes[K]) {
   creep.memory.state = state;
   creep.memory.data = data;
 }
@@ -66,7 +66,7 @@ export function runCreepWorker(creep: Creep): void {
     case WORKER_STATE_RETRIEVE_TASK:
       appendLog(creep, "RETRIEVE-TASK");
 
-      const roomTask = RoomTaskScheduler.forRoom(creep.room).assignTaskToCreep(creep);
+      const roomTask = RoomTaskScheduler.forRoom(creep.room).retrieveRoomTask(creep);
 
       switch (roomTask.roomTaskType) {
         case ROOM_TASK_CONTROLLER:
@@ -169,7 +169,7 @@ export function runCreepWorker(creep: Creep): void {
 
       const completeTaskStateMemory = getStateMemory(creep, WORKER_STATE_COMPLETE_TASK);
 
-      RoomTaskScheduler.forRoom(creep.room).markCreepTaskComplete(creep, completeTaskStateMemory.roomTaskId);
+      RoomTaskScheduler.forRoom(creep.room).markRoomTaskComplete(creep, completeTaskStateMemory.roomTaskId);
 
       if (creep.store.getUsedCapacity(RESOURCE_ENERGY) === 0) {
         setState(creep, WORKER_STATE_START_HARVEST);

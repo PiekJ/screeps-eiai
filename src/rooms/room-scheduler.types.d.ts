@@ -25,3 +25,8 @@ interface CreepAssignedRoomTask {
   initialEnergyNeeded: number;
   usedEnergyCapacity: number;
 }
+
+interface ExistingAssignedRoomTask {
+  totalEnergyInProgress: number;
+  initialEnergyNeeded: number;
+}
