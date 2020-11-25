@@ -132,7 +132,7 @@ export function spawnHarvesterCreep(spawn: StructureSpawn): void {
 
   totalCapacityLeftForBodyParts -= amountOfWorkBodyParts * workBodyPartCosts;
 
-  const amountOfMoveBodyParts = amountOfWorkBodyParts / 2;
+  const amountOfMoveBodyParts = Math.floor(amountOfWorkBodyParts / 2);
 
   if (totalCapacityLeftForBodyParts < 0) {
     throw `ERROR: Not enough energy left to harvester spawn creep! ${amountOfWorkBodyParts} ${amountOfMoveBodyParts} ${totalCapacityLeftForBodyParts} ${spawnerCapacity.totalCapacity}`;
