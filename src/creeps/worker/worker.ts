@@ -1,4 +1,5 @@
-import { buildStructure, harvestStructure, repairStructure } from "creeps/common";
+import { buildStructure, harvestStructure, repairStructure, transferStructure, withdrawStructure } from "creeps/common";
+import { RoomSourceManager } from "rooms/room-resources";
 import {
   RoomTaskScheduler,
   ROOM_TASK_BUILD,
@@ -16,6 +17,8 @@ export const WORKER_STATE_TRANSFER: WORKER_STATE_TRANSFER = 4;
 export const WORKER_STATE_BUILD: WORKER_STATE_BUILD = 5;
 export const WORKER_STATE_REPAIR: WORKER_STATE_REPAIR = 6;
 export const WORKER_STATE_COMPLETE_TASK: WORKER_STATE_COMPLETE_TASK = 7;
+export const WORKER_STATE_RETRIEVE_WITHDRAW_LOCATION: WORKER_STATE_RETRIEVE_WITHDRAW_LOCATION = 8;
+export const WORKER_STATE_WITHDRAW: WORKER_STATE_WITHDRAW = 9;
 
 function getStateMemory<K extends WorkerStateConstant>(creep: Creep, state: K): WorkerStateMemoryTypes[K] {
   return creep.memory.data;
@@ -26,7 +29,7 @@ function setState<K extends WorkerStateConstant>(creep: Creep, state: K, data?: 
   creep.memory.data = data;
 }
 
-export function runCreepWorker(creep: Creep): void {
+export function performCreepWorkerTick(creep: Creep): void {
   if (!creep.memory.state) {
     setState(creep, WORKER_STATE_UNKNOWN);
   }
@@ -34,25 +37,25 @@ export function runCreepWorker(creep: Creep): void {
   switch (creep.memory.state) {
     case WORKER_STATE_UNKNOWN:
       appendLog(creep, "UNKNOWN");
-      setState(creep, WORKER_STATE_START_HARVEST);
-      runCreepWorker(creep);
+      setState(creep, WORKER_STATE_RETRIEVE_WITHDRAW_LOCATION);
+      performCreepWorkerTick(creep);
       break;
 
-    case WORKER_STATE_START_HARVEST:
+    case WORKER_STATE_START_HARVEST: // legacy
       appendLog(creep, "START-HARVEST");
 
       const sources = creep.room.find(FIND_SOURCES_ACTIVE);
 
       setState(creep, WORKER_STATE_HARVEST, { sourceId: sources[0].id });
-      runCreepWorker(creep);
+      performCreepWorkerTick(creep);
       break;
 
-    case WORKER_STATE_HARVEST:
+    case WORKER_STATE_HARVEST: // legacy
       appendLog(creep, "HARVEST");
 
       if (creep.store.getFreeCapacity(RESOURCE_ENERGY) <= 0) {
         setState(creep, WORKER_STATE_RETRIEVE_TASK);
-        runCreepWorker(creep);
+        performCreepWorkerTick(creep);
         break;
       }
 
@@ -75,7 +78,7 @@ export function runCreepWorker(creep: Creep): void {
             structureId: roomTask.target as Id<Structure>,
             roomTaskId: roomTask.id
           });
-          runCreepWorker(creep);
+          performCreepWorkerTick(creep);
           break;
 
         case ROOM_TASK_REPAIR:
@@ -83,7 +86,7 @@ export function runCreepWorker(creep: Creep): void {
             structureId: roomTask.target as Id<Structure>,
             roomTaskId: roomTask.id
           });
-          runCreepWorker(creep);
+          performCreepWorkerTick(creep);
           break;
 
         case ROOM_TASK_BUILD:
@@ -91,7 +94,7 @@ export function runCreepWorker(creep: Creep): void {
             constructionSiteId: roomTask.target as Id<ConstructionSite>,
             roomTaskId: roomTask.id
           });
-          runCreepWorker(creep);
+          performCreepWorkerTick(creep);
           break;
       }
       break;
@@ -103,21 +106,15 @@ export function runCreepWorker(creep: Creep): void {
 
       if (creep.store.getUsedCapacity(RESOURCE_ENERGY) <= 0) {
         setState(creep, WORKER_STATE_COMPLETE_TASK, { roomTaskId: transferStateMemory.roomTaskId });
-        runCreepWorker(creep);
+        performCreepWorkerTick(creep);
         break;
       }
 
       const transferToStructure = Game.getObjectById(transferStateMemory.structureId)!;
 
-      switch (creep.transfer(transferToStructure, RESOURCE_ENERGY)) {
-        case ERR_NOT_IN_RANGE:
-          creep.moveTo(transferToStructure, { visualizePathStyle: { stroke: "#ffaa00" } });
-          break;
-
-        case ERR_FULL:
-          setState(creep, WORKER_STATE_COMPLETE_TASK, { roomTaskId: transferStateMemory.roomTaskId });
-          runCreepWorker(creep);
-          break;
+      if (transferStructure(creep, transferToStructure) === ERR_FULL) {
+        setState(creep, WORKER_STATE_COMPLETE_TASK, { roomTaskId: transferStateMemory.roomTaskId });
+        performCreepWorkerTick(creep);
       }
       break;
 
@@ -128,7 +125,7 @@ export function runCreepWorker(creep: Creep): void {
 
       if (creep.store.getUsedCapacity(RESOURCE_ENERGY) <= 0) {
         setState(creep, WORKER_STATE_COMPLETE_TASK, { roomTaskId: buildStateMemory.roomTaskId });
-        runCreepWorker(creep);
+        performCreepWorkerTick(creep);
         break;
       }
 
@@ -138,7 +135,7 @@ export function runCreepWorker(creep: Creep): void {
         buildStructure(creep, constructionSiteToBuild);
       } else {
         setState(creep, WORKER_STATE_COMPLETE_TASK, { roomTaskId: buildStateMemory.roomTaskId });
-        runCreepWorker(creep);
+        performCreepWorkerTick(creep);
       }
       break;
 
@@ -149,7 +146,7 @@ export function runCreepWorker(creep: Creep): void {
 
       if (creep.store.getUsedCapacity(RESOURCE_ENERGY) <= 0) {
         setState(creep, WORKER_STATE_COMPLETE_TASK, { roomTaskId: repairStateMemory.roomTaskId });
-        runCreepWorker(creep);
+        performCreepWorkerTick(creep);
         break;
       }
 
@@ -157,7 +154,7 @@ export function runCreepWorker(creep: Creep): void {
 
       if (structureToRepair.hits >= structureToRepair.hitsMax) {
         setState(creep, WORKER_STATE_COMPLETE_TASK, { roomTaskId: repairStateMemory.roomTaskId });
-        runCreepWorker(creep);
+        performCreepWorkerTick(creep);
         break;
       }
 
@@ -172,12 +169,39 @@ export function runCreepWorker(creep: Creep): void {
       RoomTaskScheduler.forRoom(creep.room).markRoomTaskComplete(creep, completeTaskStateMemory.roomTaskId);
 
       if (creep.store.getUsedCapacity(RESOURCE_ENERGY) === 0) {
-        setState(creep, WORKER_STATE_START_HARVEST);
+        setState(creep, WORKER_STATE_RETRIEVE_WITHDRAW_LOCATION);
       } else {
         setState(creep, WORKER_STATE_RETRIEVE_TASK);
       }
 
-      runCreepWorker(creep);
+      performCreepWorkerTick(creep);
+      break;
+
+    case WORKER_STATE_RETRIEVE_WITHDRAW_LOCATION:
+      appendLog(creep, "RETRIEVE-WITHDRAW-LOCATION");
+
+      const container = RoomSourceManager.forRoom(creep.room).locateContainerForWorker();
+
+      setState(creep, WORKER_STATE_WITHDRAW, {
+        containerId: container.id
+      });
+      performCreepWorkerTick(creep);
+      break;
+
+    case WORKER_STATE_WITHDRAW:
+      appendLog(creep, "WITHDRAW");
+
+      if (creep.store.getFreeCapacity(RESOURCE_ENERGY) === 0) {
+        setState(creep, WORKER_STATE_RETRIEVE_TASK);
+        performCreepWorkerTick(creep);
+        break;
+      }
+
+      const withdrawStateMemory = getStateMemory(creep, WORKER_STATE_WITHDRAW);
+
+      const structureToWithdraw = Game.getObjectById(withdrawStateMemory.containerId)!;
+
+      withdrawStructure(creep, structureToWithdraw);
       break;
   }
 }

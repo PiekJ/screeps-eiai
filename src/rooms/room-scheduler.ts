@@ -35,19 +35,27 @@ function toRoomTask(roomTaskType: RoomTaskConstant, target: RoomTaskTarget, ener
 }
 
 export class RoomTaskScheduler {
+  private static roomTaskSchedulerInstances: Map<string, RoomTaskScheduler>;
+
   private priorityQueue: RoomTask[];
 
-  private static roomTaskSchedulerInstances: Map<string, RoomTaskScheduler>;
+  private get creepRoomTaskTracker(): CreepRoomTaskTrackerMap {
+    return this.room.memory.creepRoomTaskTracker;
+  }
+
+  private set creepRoomTaskTracker(value: CreepRoomTaskTrackerMap) {
+    this.room.memory.creepRoomTaskTracker = value;
+  }
 
   private constructor(private room: Room) {
     this.priorityQueue = [];
 
-    if (!room.memory.creepRoomTaskTracker) {
-      room.memory.creepRoomTaskTracker = {};
+    if (!this.creepRoomTaskTracker) {
+      this.creepRoomTaskTracker = {};
     }
   }
 
-  public runScheduler(): void {
+  public performTick(): void {
     const existingAssignedRoomTaskMap = this.fetchExistingAssignedRoomTasks();
 
     const structuresInRoom = this.room.find(FIND_STRUCTURES);
@@ -110,7 +118,7 @@ export class RoomTaskScheduler {
   }
 
   public markRoomTaskComplete(creep: Creep, roomTaskId: string, forceComplete?: boolean): void {
-    const creepsAssignedRoomTask = this.room.memory.creepRoomTaskTracker[roomTaskId];
+    const creepsAssignedRoomTask = this.creepRoomTaskTracker[roomTaskId];
     if (!creepsAssignedRoomTask) {
       return;
     }
@@ -121,10 +129,10 @@ export class RoomTaskScheduler {
     }
 
     if (creepsAssignedRoomTask.length === 1) {
-      delete this.room.memory.creepRoomTaskTracker[roomTaskId];
+      delete this.creepRoomTaskTracker[roomTaskId];
     } else if (creepsAssignedRoomTask.length > 1) {
       // other creeps are still working on the task.
-      this.room.memory.creepRoomTaskTracker[roomTaskId] = creepsAssignedRoomTask.filter(x => x.creepId !== creep.id);
+      this.creepRoomTaskTracker[roomTaskId] = creepsAssignedRoomTask.filter(x => x.creepId !== creep.id);
     }
   }
 
@@ -156,7 +164,7 @@ export class RoomTaskScheduler {
   }
 
   private assignCreepToRoomTask(creep: Creep, roomTask: RoomTask): void {
-    const creepsAssignedRoomTask = this.room.memory.creepRoomTaskTracker[roomTask.id];
+    const creepsAssignedRoomTask = this.creepRoomTaskTracker[roomTask.id];
 
     const creepAssignedTask = {
       creepId: creep.id,
@@ -170,7 +178,7 @@ export class RoomTaskScheduler {
       return;
     }
 
-    this.room.memory.creepRoomTaskTracker[roomTask.id] = [creepAssignedTask];
+    this.creepRoomTaskTracker[roomTask.id] = [creepAssignedTask];
   }
 
   private tryPushRoomTask(
@@ -192,15 +200,15 @@ export class RoomTaskScheduler {
   private fetchExistingAssignedRoomTasks(): Map<string, ExistingAssignedRoomTask> {
     const existingAssignedRoomTaskMap = new Map<string, ExistingAssignedRoomTask>();
 
-    for (const roomTaskId in this.room.memory.creepRoomTaskTracker) {
-      const creepsAssignedRoomTask = this.room.memory.creepRoomTaskTracker[roomTaskId].filter(
+    for (const roomTaskId in this.creepRoomTaskTracker) {
+      const creepsAssignedRoomTask = this.creepRoomTaskTracker[roomTaskId].filter(
         x => Game.getObjectById(x.creepId) !== null
       );
-      this.room.memory.creepRoomTaskTracker[roomTaskId] = creepsAssignedRoomTask;
+      this.creepRoomTaskTracker[roomTaskId] = creepsAssignedRoomTask;
 
       if (creepsAssignedRoomTask.length === 0) {
         // delete existing task, creep seems to dead.
-        delete this.room.memory.creepRoomTaskTracker[roomTaskId];
+        delete this.creepRoomTaskTracker[roomTaskId];
 
         continue;
       }

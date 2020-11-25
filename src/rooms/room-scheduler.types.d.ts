@@ -26,6 +26,10 @@ interface CreepAssignedRoomTask {
   usedEnergyCapacity: number;
 }
 
+interface CreepRoomTaskTrackerMap {
+  [key: string]: CreepAssignedRoomTask[];
+}
+
 interface ExistingAssignedRoomTask {
   totalEnergyInProgress: number;
   initialEnergyNeeded: number;

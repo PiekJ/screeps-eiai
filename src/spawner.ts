@@ -1,3 +1,4 @@
+import { HARVESTER_STATE_UNKNOWN } from "creeps/harvester/harvester";
 import { SIGNER_STATE_UNKNOWN } from "creeps/signer/signer";
 import { WORKER_STATE_UNKNOWN } from "creeps/worker/worker";
 import { appendLog } from "utils/Logger";
@@ -8,19 +9,7 @@ const bodyPartBuildCosts = {
   [CARRY]: 50
 };
 
-export function isWorkerNeeded(): boolean {
-  return _.filter(Game.creeps, creep => creep.memory.role === "worker").length < 6;
-}
-
-export function spawnWorker(spawn: StructureSpawn): void {
-  appendLog(spawn, "Do spawn");
-
-  if (spawn.spawning) {
-    appendLog(spawn, "Already spawning");
-
-    return;
-  }
-
+function totalSpawnerCapacity(spawn: StructureSpawn): { totalCapacity: number; totalUsedCapacity: number } {
   const extensions = spawn.room.find(FIND_MY_STRUCTURES, {
     filter: structure => structure.structureType === STRUCTURE_EXTENSION
   }) as StructureExtension[];
@@ -39,12 +28,34 @@ export function spawnWorker(spawn: StructureSpawn): void {
           .reduce((usedCapacity, capacity) => usedCapacity + capacity)
       : 0;
 
-  const totalCapacity = spawn.store.getCapacity(RESOURCE_ENERGY) + extensionTotalCapacity;
+  return {
+    totalCapacity: spawn.store.getCapacity(RESOURCE_ENERGY) + extensionTotalCapacity,
+    totalUsedCapacity: spawn.store.getUsedCapacity(RESOURCE_ENERGY) + extensionUsedCapacity
+  };
+}
 
-  const totalUsedCapacity = spawn.store.getUsedCapacity(RESOURCE_ENERGY) + extensionUsedCapacity;
+export function isWorkerCreepNeeded(room: Room): boolean {
+  return (
+    _.filter(Game.creeps, creep => creep.memory.roomName === room.name && creep.memory.role === "worker").length < 4 // 6 before harvesters
+  );
+}
 
-  if (totalUsedCapacity < totalCapacity) {
-    appendLog(spawn, `Not enough energy available (${totalUsedCapacity}/${totalCapacity})`);
+export function spawnWorkerCreep(spawn: StructureSpawn): void {
+  appendLog(spawn, "Do spawn");
+
+  if (spawn.spawning) {
+    appendLog(spawn, "Already spawning");
+
+    return;
+  }
+
+  const spawnerCapacity = totalSpawnerCapacity(spawn);
+
+  if (spawnerCapacity.totalUsedCapacity < spawnerCapacity.totalCapacity) {
+    appendLog(
+      spawn,
+      `Not enough energy available (${spawnerCapacity.totalUsedCapacity}/${spawnerCapacity.totalCapacity})`
+    );
 
     return;
   }
@@ -52,11 +63,11 @@ export function spawnWorker(spawn: StructureSpawn): void {
   const baseWorkerBodyParts = [MOVE, MOVE, WORK, CARRY];
 
   let totalCapacityLeftForBodyParts =
-    totalCapacity -
+    spawnerCapacity.totalCapacity -
     baseWorkerBodyParts.map(bodyPart => bodyPartBuildCosts[bodyPart]).reduce((totalCost, cost) => totalCost + cost);
 
   const carryBodyPartCosts = bodyPartBuildCosts[MOVE] + bodyPartBuildCosts[CARRY];
-  const amountOfCarryBodyParts = Math.min(0, Math.floor(totalCapacityLeftForBodyParts / carryBodyPartCosts)); // worker has enough with 50 capacity.
+  const amountOfCarryBodyParts = Math.min(1, Math.floor(totalCapacityLeftForBodyParts / carryBodyPartCosts)); // worker has enough with 50 capacity (without harvesters).
 
   totalCapacityLeftForBodyParts -= amountOfCarryBodyParts * carryBodyPartCosts;
 
@@ -68,7 +79,7 @@ export function spawnWorker(spawn: StructureSpawn): void {
   const amountOfMoveBodyParts = amountOfCarryBodyParts + amountOfWorkBodyParts;
 
   if (totalCapacityLeftForBodyParts < 0) {
-    throw `ERROR: Not enough energy left to spawn creep! ${amountOfCarryBodyParts} ${amountOfWorkBodyParts} ${amountOfMoveBodyParts} ${totalCapacityLeftForBodyParts} ${totalCapacity}`;
+    throw `ERROR: Not enough energy left to spawn worker creep! ${amountOfCarryBodyParts} ${amountOfWorkBodyParts} ${amountOfMoveBodyParts} ${totalCapacityLeftForBodyParts} ${spawnerCapacity.totalCapacity}`;
   }
 
   const workerBodyParts = [
@@ -79,5 +90,62 @@ export function spawnWorker(spawn: StructureSpawn): void {
   ];
 
   var screepName = `worker-${Game.time}`;
-  spawn.spawnCreep(workerBodyParts, screepName, { memory: { role: "worker", state: WORKER_STATE_UNKNOWN } });
+  spawn.spawnCreep(workerBodyParts, screepName, {
+    memory: { roomName: spawn.room.name, role: "worker", state: WORKER_STATE_UNKNOWN }
+  });
+}
+
+export function isHarvesterCreepNeeded(room: Room): boolean {
+  return !Object.keys(room.memory.energySourceToHarvester)
+    .map(sourceId => room.memory.energySourceToHarvester[sourceId])
+    .every(creepId => creepId !== null && Game.getObjectById(creepId));
+}
+
+export function spawnHarvesterCreep(spawn: StructureSpawn): void {
+  appendLog(spawn, "Do spawn");
+
+  if (spawn.spawning) {
+    appendLog(spawn, "Already spawning");
+
+    return;
+  }
+
+  const spawnerCapacity = totalSpawnerCapacity(spawn);
+
+  if (spawnerCapacity.totalUsedCapacity < spawnerCapacity.totalCapacity) {
+    appendLog(
+      spawn,
+      `Not enough energy available (${spawnerCapacity.totalUsedCapacity}/${spawnerCapacity.totalCapacity})`
+    );
+
+    return;
+  }
+
+  const baseHarvesterBodyParts = [CARRY];
+
+  let totalCapacityLeftForBodyParts =
+    spawnerCapacity.totalCapacity -
+    baseHarvesterBodyParts.map(bodyPart => bodyPartBuildCosts[bodyPart]).reduce((totalCost, cost) => totalCost + cost);
+
+  const workBodyPartCosts = bodyPartBuildCosts[MOVE] / 2 + bodyPartBuildCosts[WORK];
+  const amountOfWorkBodyParts = Math.min(5, Math.floor(totalCapacityLeftForBodyParts / workBodyPartCosts)); // more worker parts!!
+
+  totalCapacityLeftForBodyParts -= amountOfWorkBodyParts * workBodyPartCosts;
+
+  const amountOfMoveBodyParts = amountOfWorkBodyParts / 2;
+
+  if (totalCapacityLeftForBodyParts < 0) {
+    throw `ERROR: Not enough energy left to harvester spawn creep! ${amountOfWorkBodyParts} ${amountOfMoveBodyParts} ${totalCapacityLeftForBodyParts} ${spawnerCapacity.totalCapacity}`;
+  }
+
+  const harvesterBodyParts = [
+    ...baseHarvesterBodyParts,
+    ...new Array(amountOfMoveBodyParts).fill(MOVE),
+    ...new Array(amountOfWorkBodyParts).fill(WORK)
+  ];
+
+  var screepName = `harvester-${Game.time}`;
+  spawn.spawnCreep(harvesterBodyParts, screepName, {
+    memory: { roomName: spawn.room.name, role: "harvester", state: HARVESTER_STATE_UNKNOWN }
+  });
 }

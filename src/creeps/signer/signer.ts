@@ -1,5 +1,5 @@
 import { recycleCreep, signController } from "creeps/common";
-import { runCreepWorker } from "creeps/worker/worker";
+import { performCreepWorkerTick } from "creeps/worker/worker";
 import { appendLog } from "utils/Logger";
 
 export const SIGNER_STATE_UNKNOWN: SIGNER_STATE_UNKNOWN = 0;
@@ -17,7 +17,7 @@ function setState<K extends SignerStateConstant>(creep: Creep, state: K, data?: 
   creep.memory.data = data;
 }
 
-export function runCreepSigner(creep: Creep): void {
+export function performCreepSignerTick(creep: Creep): void {
   if (!creep.memory.state) {
     setState(creep, SIGNER_STATE_UNKNOWN);
   }
@@ -26,7 +26,7 @@ export function runCreepSigner(creep: Creep): void {
     case SIGNER_STATE_UNKNOWN:
       appendLog(creep, "UNKNOWN");
       setState(creep, SIGNER_STATE_CHECK_FLAGS);
-      runCreepWorker(creep);
+      performCreepSignerTick(creep);
       break;
 
     case SIGNER_STATE_CHECK_FLAGS:
@@ -40,13 +40,13 @@ export function runCreepSigner(creep: Creep): void {
             controllerId: flag.room?.controller?.id!,
             text: flagName
           });
-          runCreepSigner(creep);
+          performCreepSignerTick(creep);
           break;
         }
       }
 
       setState(creep, SIGNER_STATE_FIND_SPAWNER_RECYCLE);
-      runCreepSigner(creep);
+      performCreepSignerTick(creep);
       break;
 
     case SIGNER_STATE_SIGN:
