@@ -72,7 +72,7 @@ export function spawnWorkerCreep(spawn: StructureSpawn): void {
   totalCapacityLeftForBodyParts -= amountOfCarryBodyParts * carryBodyPartCosts;
 
   const workBodyPartCosts = bodyPartBuildCosts[MOVE] + bodyPartBuildCosts[WORK];
-  const amountOfWorkBodyParts = Math.floor(totalCapacityLeftForBodyParts / workBodyPartCosts); // more worker parts!!
+  const amountOfWorkBodyParts = Math.min(3, Math.floor(totalCapacityLeftForBodyParts / workBodyPartCosts)); // more worker parts!!
 
   totalCapacityLeftForBodyParts -= amountOfWorkBodyParts * workBodyPartCosts;
 
