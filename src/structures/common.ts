@@ -8,7 +8,7 @@ export function isStructureNeedingEnergy(structure: AnyStructure): boolean {
 export function isStructureNeedingRepair(structure: AnyStructure): boolean {
   return (
     (structure.structureType === STRUCTURE_ROAD && structure.hits / structure.hitsMax < 0.5) ||
-    (structure.structureType === STRUCTURE_RAMPART && structure.hits < 1000)
+    (structure.structureType === STRUCTURE_RAMPART && structure.hits < 50_000)
   );
 }
 
@@ -16,7 +16,8 @@ export function calculateRepairCost(structure: AnyStructure): number {
   let hitsToRepair = structure.hitsMax - structure.hits;
 
   if (structure.structureType === STRUCTURE_RAMPART) {
-    hitsToRepair = Math.min(50000, hitsToRepair);
+    // match with "is repair needed".
+    hitsToRepair = Math.min(50_000 - structure.hits, hitsToRepair);
   }
 
   return Math.ceil(hitsToRepair / 100);
