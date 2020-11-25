@@ -75,7 +75,7 @@ export function performCreepHarvesterTick(creep: Creep): void {
         const dumpToContainer = Game.getObjectById(dumpEnergyStateMemory.containerId)!;
 
         if (transferStructure(creep, dumpToContainer) === ERR_FULL) {
-          creep.say("DERP...");
+          creep.say("💤 idle");
         }
       }
       break;
