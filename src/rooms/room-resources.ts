@@ -60,18 +60,22 @@ export class RoomSourceManager {
     throw `Unable to assign source to harvester: ${creep.name}`;
   }
 
-  public locateContainerForHarvester(creep: Creep): StructureContainer {
+  public locateContainerForHarvester(creep: Creep): StructureContainer | undefined {
     const containerFromCache = this.harvesterToContainer[creep.id];
     if (containerFromCache) {
-      return Game.getObjectById(containerFromCache)!;
+      const result = Game.getObjectById(containerFromCache);
+
+      if (result) {
+        return result;
+      }
     }
 
     const closestContainer = creep.pos.findClosestByPath(FIND_STRUCTURES, {
       filter: structure => structure.structureType === STRUCTURE_CONTAINER
     }) as StructureContainer | null;
 
-    if (closestContainer === null) {
-      throw `Unable to locate container in room for ${creep.name}`;
+    if (closestContainer === null || Object.values(this.harvesterToContainer).includes(closestContainer.id)) {
+      return undefined;
     }
 
     this.harvesterToContainer[creep.id] = closestContainer.id;
@@ -79,13 +83,13 @@ export class RoomSourceManager {
     return closestContainer;
   }
 
-  public locateContainerForWorker(): StructureContainer {
+  public locateContainerForWorker(): StructureContainer | undefined {
     const possibleContainers = this.room.find(FIND_STRUCTURES, {
       filter: structure => structure.structureType === STRUCTURE_CONTAINER
     }) as StructureContainer[];
 
     if (possibleContainers.length === 0) {
-      throw "ERROR: NO CONTAINER, KEK";
+      return undefined;
     }
 
     possibleContainers.sort(

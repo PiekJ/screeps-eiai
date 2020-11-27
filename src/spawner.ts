@@ -40,8 +40,8 @@ export function isWorkerCreepNeeded(room: Room): boolean {
   );
 }
 
-export function spawnWorkerCreep(spawn: StructureSpawn): void {
-  appendLog(spawn, "Do spawn");
+export function spawnWorkerCreep(spawn: StructureSpawn, minEnergyNeededToSpawn?: number): void {
+  appendLog(spawn, "Do spawn (Worker)");
 
   if (spawn.spawning) {
     appendLog(spawn, "Already spawning");
@@ -49,13 +49,14 @@ export function spawnWorkerCreep(spawn: StructureSpawn): void {
     return;
   }
 
-  const spawnerCapacity = totalSpawnerCapacity(spawn);
+  const { totalCapacity, totalUsedCapacity } = totalSpawnerCapacity(spawn);
 
-  if (spawnerCapacity.totalUsedCapacity < spawnerCapacity.totalCapacity) {
-    appendLog(
-      spawn,
-      `Not enough energy available (${spawnerCapacity.totalUsedCapacity}/${spawnerCapacity.totalCapacity})`
-    );
+  if (!minEnergyNeededToSpawn) {
+    minEnergyNeededToSpawn = totalCapacity;
+  }
+
+  if (totalUsedCapacity < Math.min(minEnergyNeededToSpawn, totalCapacity)) {
+    appendLog(spawn, `Not enough energy available (${totalUsedCapacity}/${totalCapacity})`);
 
     return;
   }
@@ -63,7 +64,7 @@ export function spawnWorkerCreep(spawn: StructureSpawn): void {
   const baseWorkerBodyParts = [MOVE, MOVE, WORK, CARRY];
 
   let totalCapacityLeftForBodyParts =
-    spawnerCapacity.totalCapacity -
+    totalUsedCapacity -
     baseWorkerBodyParts.map(bodyPart => bodyPartBuildCosts[bodyPart]).reduce((totalCost, cost) => totalCost + cost);
 
   const carryBodyPartCosts = bodyPartBuildCosts[MOVE] + bodyPartBuildCosts[CARRY];
@@ -79,7 +80,7 @@ export function spawnWorkerCreep(spawn: StructureSpawn): void {
   const amountOfMoveBodyParts = amountOfCarryBodyParts + amountOfWorkBodyParts;
 
   if (totalCapacityLeftForBodyParts < 0) {
-    throw `ERROR: Not enough energy left to spawn worker creep! ${amountOfCarryBodyParts} ${amountOfWorkBodyParts} ${amountOfMoveBodyParts} ${totalCapacityLeftForBodyParts} ${spawnerCapacity.totalCapacity}`;
+    throw `ERROR: Not enough energy left to spawn worker creep! ${amountOfCarryBodyParts} ${amountOfWorkBodyParts} ${amountOfMoveBodyParts} ${totalCapacityLeftForBodyParts} ${totalCapacity}`;
   }
 
   const workerBodyParts = [
@@ -101,8 +102,8 @@ export function isHarvesterCreepNeeded(room: Room): boolean {
     .every(creepId => creepId !== null && Game.getObjectById(creepId));
 }
 
-export function spawnHarvesterCreep(spawn: StructureSpawn): void {
-  appendLog(spawn, "Do spawn");
+export function spawnHarvesterCreep(spawn: StructureSpawn, minEnergyNeededToSpawn?: number): void {
+  appendLog(spawn, "Do spawn (Harvester)");
 
   if (spawn.spawning) {
     appendLog(spawn, "Already spawning");
@@ -110,13 +111,14 @@ export function spawnHarvesterCreep(spawn: StructureSpawn): void {
     return;
   }
 
-  const spawnerCapacity = totalSpawnerCapacity(spawn);
+  const { totalCapacity, totalUsedCapacity } = totalSpawnerCapacity(spawn);
 
-  if (spawnerCapacity.totalUsedCapacity < spawnerCapacity.totalCapacity) {
-    appendLog(
-      spawn,
-      `Not enough energy available (${spawnerCapacity.totalUsedCapacity}/${spawnerCapacity.totalCapacity})`
-    );
+  if (!minEnergyNeededToSpawn) {
+    minEnergyNeededToSpawn = totalCapacity;
+  }
+
+  if (totalUsedCapacity < Math.min(minEnergyNeededToSpawn, totalCapacity)) {
+    appendLog(spawn, `Not enough energy available (${totalUsedCapacity}/${totalCapacity})`);
 
     return;
   }
@@ -124,7 +126,7 @@ export function spawnHarvesterCreep(spawn: StructureSpawn): void {
   const baseHarvesterBodyParts = [CARRY];
 
   let totalCapacityLeftForBodyParts =
-    spawnerCapacity.totalCapacity -
+    totalUsedCapacity -
     baseHarvesterBodyParts.map(bodyPart => bodyPartBuildCosts[bodyPart]).reduce((totalCost, cost) => totalCost + cost);
 
   const workBodyPartCosts = bodyPartBuildCosts[MOVE] / 2 + bodyPartBuildCosts[WORK];
@@ -132,10 +134,10 @@ export function spawnHarvesterCreep(spawn: StructureSpawn): void {
 
   totalCapacityLeftForBodyParts -= amountOfWorkBodyParts * workBodyPartCosts;
 
-  const amountOfMoveBodyParts = Math.floor(amountOfWorkBodyParts / 2);
+  const amountOfMoveBodyParts = Math.max(1, Math.floor(amountOfWorkBodyParts / 2));
 
   if (totalCapacityLeftForBodyParts < 0) {
-    throw `ERROR: Not enough energy left to harvester spawn creep! ${amountOfWorkBodyParts} ${amountOfMoveBodyParts} ${totalCapacityLeftForBodyParts} ${spawnerCapacity.totalCapacity}`;
+    throw `ERROR: Not enough energy left to harvester spawn creep! ${amountOfWorkBodyParts} ${amountOfMoveBodyParts} ${totalCapacityLeftForBodyParts} ${totalCapacity}`;
   }
 
   const harvesterBodyParts = [

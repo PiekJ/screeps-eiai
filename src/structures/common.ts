@@ -7,9 +7,14 @@ export function isStructureNeedingEnergy(structure: AnyStructure): boolean {
 
 export function isStructureNeedingRepair(structure: AnyStructure): boolean {
   return (
-    (structure.structureType === STRUCTURE_ROAD && structure.hits / structure.hitsMax < 0.5) ||
+    ((structure.structureType === STRUCTURE_ROAD || structure.structureType === STRUCTURE_CONTAINER) &&
+      structure.hits / structure.hitsMax < 0.5) ||
     (structure.structureType === STRUCTURE_RAMPART && structure.hits < 50_000)
   );
+}
+
+export function isDroppedResourceWorthPickingUp(resource: Resource): boolean {
+  return resource.resourceType === RESOURCE_ENERGY && resource.amount > Math.ceil(resource.amount / 1000) * 50;
 }
 
 export function calculateRepairCost(structure: AnyStructure): number {
@@ -33,4 +38,16 @@ export function calculateTransferCost(structure: AnyStructure): number {
   }
 
   return 0;
+}
+
+export function calculateRelocateCost(structure: Ruin | Tombstone): number {
+  if ("store" in structure) {
+    return (structure.store as StoreDefinition).getFreeCapacity(RESOURCE_ENERGY);
+  }
+
+  return 0;
+}
+
+export function calculatePickupCost(resource: Resource): number {
+  return resource.amount;
 }

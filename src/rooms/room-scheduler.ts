@@ -1,7 +1,10 @@
 import {
   calculateBuildCost,
+  calculatePickupCost,
+  calculateRelocateCost,
   calculateRepairCost,
   calculateTransferCost,
+  isDroppedResourceWorthPickingUp as isDroppedResourceWorthPickingup,
   isStructureNeedingEnergy,
   isStructureNeedingRepair
 } from "structures/common";
@@ -12,13 +15,17 @@ export const ROOM_TASK_TRANSFER: ROOM_TASK_TRANSFER = "TRANSFER";
 export const ROOM_TASK_REPAIR: ROOM_TASK_REPAIR = "REPAIR";
 export const ROOM_TASK_BUILD: ROOM_TASK_BUILD = "BUILD";
 export const ROOM_TASK_CONTROLLER: ROOM_TASK_CONTROLLER = "CONTROLLER";
+export const ROOM_TASK_PICKUP_RESOURCE: ROOM_TASK_PICKUP_RESOURCE = "PICKUP-RESOURCE";
+export const ROOM_TASK_RELOCATE_RESOURCE: ROOM_TASK_RELOCATE_RESOURCE = "RELOCATE-SOURCE";
 
 const ROOM_TASK_ORDER = {
-  [ROOM_TASK_UNKNOWN]: 3,
-  [ROOM_TASK_TRANSFER]: 1,
-  [ROOM_TASK_REPAIR]: 2,
-  [ROOM_TASK_BUILD]: 3,
-  [ROOM_TASK_CONTROLLER]: 0
+  [ROOM_TASK_UNKNOWN]: -1,
+  [ROOM_TASK_TRANSFER]: 3,
+  [ROOM_TASK_REPAIR]: 4,
+  [ROOM_TASK_BUILD]: 5,
+  [ROOM_TASK_CONTROLLER]: 0,
+  [ROOM_TASK_PICKUP_RESOURCE]: 1,
+  [ROOM_TASK_RELOCATE_RESOURCE]: 2
 };
 
 function roomTaskOrderCallback(a: RoomTask, b: RoomTask): number {
@@ -76,6 +83,26 @@ export class RoomTaskScheduler {
       }
     }
 
+    // const pickupResourcesInRoom = this.room.find(FIND_DROPPED_RESOURCES);
+
+    // for (const droppedResource of pickupResourcesInRoom) {
+    //   if (isDroppedResourceWorthPickingup(droppedResource)) {
+    //     this.tryPushRoomTask(
+    //       existingAssignedRoomTaskMap,
+    //       toRoomTask(ROOM_TASK_PICKUP_RESOURCE, droppedResource, calculatePickupCost(droppedResource))
+    //     );
+    //   }
+    // }
+
+    // const relocateResourcesInRoom = [...this.room.find(FIND_TOMBSTONES), ...this.room.find(FIND_RUINS)];
+
+    // for (const relocateResource of relocateResourcesInRoom) {
+    //   this.tryPushRoomTask(
+    //     existingAssignedRoomTaskMap,
+    //     toRoomTask(ROOM_TASK_RELOCATE_RESOURCE, relocateResource, calculateRelocateCost(relocateResource))
+    //   );
+    // }
+
     const constructionSitesInRoom = this.room.find(FIND_MY_CONSTRUCTION_SITES);
 
     for (const constructionSite of constructionSitesInRoom) {
@@ -85,7 +112,7 @@ export class RoomTaskScheduler {
       );
     }
 
-    if (this.room.controller!.ticksToDowngrade <= 500) {
+    if (this.room.controller!.ticksToDowngrade <= 2000) {
       this.tryPushRoomTask(existingAssignedRoomTaskMap, toRoomTask(ROOM_TASK_CONTROLLER, this.room.controller!, 50));
     }
 

@@ -17,17 +17,20 @@ import { performCreepWorkerTick } from "creeps/worker/worker";
   Use less workers
   Grap energy from nearest storage
 
-  Room planning:
+  Room planning (Determine RPL (Room Progress Level) by what has been build etc and then do certain stuff):
   Place storage container near each source (until links are avalable, replace them)
 
 
   Room creep manager
-  Depending on controller level keep certain creep population
+  Depending on RPL keep certain creep population
   1: low level workers - construct basic infrastructer (roads, extensions and containers)
   2: (and level 1 completed) spawn harvester for each source. Few high level workers (same as harvester, but being able with more worker parts?)
   ...
   4: construct storage - spawn transporters to bring energy from containers to storage ()
   5: construct links to replace containers
+
+
+  !!!!!Something to rebuild room when structures are destroyed
 */
 
 import { RoomTaskScheduler } from "rooms/room-scheduler";
@@ -52,12 +55,10 @@ export const loop = ErrorMapper.wrapLoop(() => {
 
   // planRoom(mobSpawner.room, mobSpawner);
 
-  if (isHarvesterCreepNeeded(mobSpawner.room)) {
-    spawnHarvesterCreep(mobSpawner);
-  }
-
   if (isWorkerCreepNeeded(mobSpawner.room)) {
-    spawnWorkerCreep(mobSpawner);
+    spawnWorkerCreep(mobSpawner, 200);
+  } else if (isHarvesterCreepNeeded(mobSpawner.room)) {
+    spawnHarvesterCreep(mobSpawner, 300);
   }
 
   for (const creepName in Game.creeps) {

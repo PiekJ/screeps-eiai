@@ -41,7 +41,7 @@ export function performCreepWorkerTick(creep: Creep): void {
       performCreepWorkerTick(creep);
       break;
 
-    case WORKER_STATE_START_HARVEST: // legacy
+    case WORKER_STATE_START_HARVEST:
       appendLog(creep, "START-HARVEST");
 
       const sources = creep.room.find(FIND_SOURCES_ACTIVE);
@@ -50,7 +50,7 @@ export function performCreepWorkerTick(creep: Creep): void {
       performCreepWorkerTick(creep);
       break;
 
-    case WORKER_STATE_HARVEST: // legacy
+    case WORKER_STATE_HARVEST:
       appendLog(creep, "HARVEST");
 
       if (creep.store.getFreeCapacity(RESOURCE_ENERGY) <= 0) {
@@ -182,9 +182,15 @@ export function performCreepWorkerTick(creep: Creep): void {
 
       const container = RoomSourceManager.forRoom(creep.room).locateContainerForWorker();
 
-      setState(creep, WORKER_STATE_WITHDRAW, {
-        containerId: container.id
-      });
+      if (container) {
+        setState(creep, WORKER_STATE_WITHDRAW, {
+          containerId: container.id
+        });
+        performCreepWorkerTick(creep);
+        break;
+      }
+
+      setState(creep, WORKER_STATE_START_HARVEST);
       performCreepWorkerTick(creep);
       break;
 
@@ -199,9 +205,15 @@ export function performCreepWorkerTick(creep: Creep): void {
 
       const withdrawStateMemory = getStateMemory(creep, WORKER_STATE_WITHDRAW);
 
-      const structureToWithdraw = Game.getObjectById(withdrawStateMemory.containerId)!;
+      const structureToWithdraw = Game.getObjectById(withdrawStateMemory.containerId);
 
-      withdrawStructure(creep, structureToWithdraw);
+      if (structureToWithdraw) {
+        withdrawStructure(creep, structureToWithdraw);
+        break;
+      }
+
+      setState(creep, WORKER_STATE_START_HARVEST);
+      performCreepWorkerTick(creep);
       break;
   }
 }
